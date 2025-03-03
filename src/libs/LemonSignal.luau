@@ -9,7 +9,7 @@ export type Connection<U...> = {
 	Reconnect: (self: Connection<U...>) -> (),
 }
 
-export type Signal<T... = ()> = {
+export type Signal<T...> = {
 	RBXScriptConnection: RBXScriptConnection?,
 
 	Connect: <U...>(self: Signal<T...>, fn: (...any) -> (), U...) -> Connection<U...>,

@@ -19,21 +19,21 @@ for fun
 
 ### Requests
 
--   [ ] Batch Requests
+-   [x] Batch Requests
 -   [ ] Requests
     -   [x] General
     -   [x] Config
-    -   [ ] Sources
+    -   [x] Sources
     -   [ ] Scenes
     -   [ ] Inputs
     -   [ ] Transitions
     -   [ ] Filters
     -   [ ] Scene Items
-    -   [ ] Outputs
-    -   [ ] Stream
-    -   [ ] Record
-    -   [ ] Media Inputs
-    -   [ ] Ui
+    -   [x] Outputs
+    -   [x] Stream
+    -   [x] Record
+    -   [x] Media Inputs
+    -   [x] Ui
 
 ### Other
 

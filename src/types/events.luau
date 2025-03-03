@@ -1,29 +1,6 @@
-type JSONType = string | number | boolean | { any } | { [string]: any }
-type Object<K = string, V = JSONType> = { [K]: V }
+type Object<K = string, V = any> = { [K]: V }
 
-export type MonitorType =
-	"OBS_MONITORING_TYPE_NONE"
-	| "OBS_MONITORING_TYPE_MONITOR_ONLY"
-	| "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT"
-
-export type ObsMediaInputAction =
-	"OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NONE"
-	| "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PLAY"
-	| "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP"
-	| "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART"
-	| "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NEXT"
-	| "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PREVIOUS"
-
-export type ObsOutputState =
-	"OBS_WEBSOCKET_OUTPUT_UNKNOWN"
-	| "OBS_WEBSOCKET_OUTPUT_STARTING"
-	| "OBS_WEBSOCKET_OUTPUT_STARTED"
-	| "OBS_WEBSOCKET_OUTPUT_STOPPING"
-	| "OBS_WEBSOCKET_OUTPUT_STOPPED"
-	| "OBS_WEBSOCKET_OUTPUT_RECONNECTING"
-	| "OBS_WEBSOCKET_OUTPUT_RECONNECTED"
-	| "OBS_WEBSOCKET_OUTPUT_PAUSED"
-	| "OBS_WEBSOCKET_OUTPUT_RESUMED"
+local Enums = require("../enums")
 
 export type VendorEvent = {
 	vendorName: string,
@@ -164,7 +141,7 @@ export type InputAudioTracksChanged = {
 export type InputAudioMonitorTypeChanged = {
 	inputName: string,
 	inputUuid: string,
-	monitorType: MonitorType,
+	monitorType: Enums.ObsMonitorType,
 }
 
 export type InputVolumeMeters = {
@@ -284,12 +261,12 @@ export type SceneItemTransformChanged = {
 
 export type StreamStateChanged = {
 	outputActive: boolean,
-	outputState: ObsOutputState,
+	outputState: Enums.ObsOutputState,
 }
 
 export type RecordStateChanged = {
 	outputActive: boolean,
-	outputState: ObsOutputState,
+	outputState: Enums.ObsOutputState,
 	outputPath: string | any,
 }
 
@@ -299,12 +276,12 @@ export type RecordFileChanged = {
 
 export type ReplayBufferStateChanged = {
 	outputActive: boolean,
-	outputState: ObsOutputState,
+	outputState: Enums.ObsOutputState,
 }
 
 export type VirtualcamStateChanged = {
 	outputActive: boolean,
-	outputState: ObsOutputState,
+	outputState: Enums.ObsOutputState,
 }
 
 export type ReplayBufferSaved = {
@@ -324,7 +301,7 @@ export type MediaInputPlaybackEnded = {
 export type MediaInputActionTriggered = {
 	inputName: string,
 	inputUuid: string,
-	mediaActon: ObsMediaInputAction,
+	mediaActon: Enums.ObsMediaInputAction,
 }
 
 export type StudioModeStateChanged = {

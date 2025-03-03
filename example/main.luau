@@ -6,6 +6,29 @@ local obs = OBSWebSocket.new()
 
 obs.onReady:Connect(function()
 	print("Connected to OBS!")
+	local results = obs:batchRequest({
+		requests = {
+			{
+				requestType = "Sleep",
+				requestData = {
+					sleepMillis = 1000,
+				},
+			},
+			{
+				requestType = "GetStats",
+			},
+		},
+	})
+	print(results)
+	--print(obs:request("GetInputSettings", { inputName = "thing" }))
+end)
+
+obs.onSocketClosed:Once(function(code, name)
+	if code then
+		print(`Connection to OBS closed: {name} ({name})`)
+	else
+		print("Connection to OBS closed")
+	end
 end)
 
 obs:on("StudioModeStateChanged", function(d: OBSWebSocket.StudioModeStateChanged)

@@ -57,12 +57,9 @@ webSocket.new = function(): OBSWebSocket
 end
 
 type IdentifyParams = {
-	--- Version number that the client would like the obs-websocket server to use
 	rpcVersion: number,
-	--- Bitmask of ``EventSubscriptions`` enum. By default, all event categories are subscribed, except for events marked as high volume
 	eventSubscriptions: number?,
 }
---- Connect to the OBS WebSocket server
 methods.connect = function(self: OBSWebSocket, password: string?, url: string?, identifyParams: IdentifyParams?)
 	assert(not self.connected, "Already connected to OBS")
 
@@ -140,7 +137,6 @@ methods.connect = function(self: OBSWebSocket, password: string?, url: string?, 
 	})
 end
 
---- Connects to a OBS WebSocket event
 methods.on = (
 	function(self: OBSWebSocket, eventType: string, handler: (data: {}) -> ())
 		if not self._handlers[eventType] then
@@ -150,11 +146,16 @@ methods.on = (
 	end :: any
 ) :: Types.OnEventHandle<OBSWebSocket>
 
-methods._makeRequest = function(
-	self: OBSWebSocket,
-	requestType: string,
-	requestData: {}?
-): Types.RequestResponseOpCode<Types.Object>
+methods.reidentify = function(self: OBSWebSocket, newEventSubscriptions: number?)
+	self._socket:send(serde.json.encode({
+		op = 3,
+		d = {
+			eventSubscriptions = newEventSubscriptions,
+		},
+	} :: Types.ReidentifyOpCode))
+end
+
+methods.request = function(self: OBSWebSocket, requestType: Types.RequestType, requestData: {}?): Types.Object
 	local generatedUuid = uuid()
 
 	self._socket:send(serde.json.encode({
@@ -186,130 +187,125 @@ methods._makeRequest = function(
 			else requestStatus.comment
 	)
 
-	return finalJson :: any
+	return finalJson.d.responseData :: any
+end
+
+type BatchRequestParams = {
+	haltOnFailure: boolean?,
+	executionType: number?,
+	requests: {
+		{
+			requestType: Types.RequestType,
+			requestId: string?,
+			requestData: Types.Object?,
+		}
+	},
+}
+methods.batchRequest = function(self: OBSWebSocket, params: BatchRequestParams): { Types.Object }
+	local generatedUuid = uuid()
+
+	self._socket:send(serde.json.encode({
+		op = Enums.WebSocketOpCode.RequestBatch,
+		d = {
+			requestId = generatedUuid,
+			haltOnFailure = params.haltOnFailure,
+			executionType = params.executionType,
+			requests = params.requests,
+		},
+	} :: Types.RequestBatchOpCode))
+
+	local finalJson: Types.RequestBatchResponseOpCode
+	while true do
+		local json: Types.BaseOpCode = self._onOpCode:Wait()
+		if json.op == Enums.WebSocketOpCode.RequestBatchResponse then
+			local json: Types.RequestBatchResponseOpCode = json :: any
+			if json.d.requestId == generatedUuid then
+				finalJson = json
+				break
+			end
+		end
+	end
+
+	return finalJson.d.results :: any
 end
 
 -- ### General Requests ###
 
 type GetVersionResponse = {
-	--- Current OBS Studio version
 	obsVersion: string,
-	--- Current obs-websocket version
 	obsWebSocketVersion: string,
-	--- Current latest obs-websocket RPC version
 	rpcVersion: number,
-	--- Array of available RPC requests for the currently negotiated RPC version
 	availableRequests: { string },
-	--- Image formats available in ``getSourceScreenshot`` and ``saveSourceScreenshot`` requests
 	supportedImageFormats: { string },
-	--- Name of the platform. Usually ``windows``, ``macos``, or ``ubuntu`` (linux flavor). Not guaranteed to be any of those
 	platform: string,
-	--- Description of the platform, like ``Windows 10 (10.0)``
 	platformDescription: string,
 }
---- Gets data about the current plugin and RPC version
 methods.getVersion = function(self: OBSWebSocket): GetVersionResponse
-	local response = self:_makeRequest("GetVersion")
-	return response.d.responseData :: any
+	local response = self:request("GetVersion")
+	return response :: any
 end
 
 type GetStatsResponse = {
-	--- Current CPU usage in percent
 	cpuUsage: number,
-	--- Amount of memory in MB currently being used by OBS
 	memoryUsage: number,
-	--- Available disk space on the device being used for recording storage
 	availableDiskSpace: number,
-	--- Current FPS being rendered
 	activeFps: number,
-	--- Average time in milliseconds that OBS is taking to render a frame
 	averageFrameRenderTime: number,
-	--- Number of frames skipped by OBS in the render thread
 	renderSkippedFrames: number,
-	--- Total number of frames outputted by the render thread
 	renderTotalFrames: number,
-	--- Number of frames skipped by OBS in the output thread
 	outputSkippedFrames: number,
-	--- Total number of frames outputted by the output thread
 	outputTotalFrames: number,
-	--- Total number of messages received by obs-websocket from the client
 	webSocketSessionIncomingMessages: number,
-	--- Total number of messages sent by obs-websocket to the client
 	webSocketSessionOutgoingMessages: number,
 }
---- Gets statistics about OBS, obs-websocket, and the current session
 methods.getStats = function(self: OBSWebSocket): GetStatsResponse
-	local response = self:_makeRequest("GetStats")
-	return response.d.responseData :: any
+	local response = self:request("GetStats")
+	return response :: any
 end
 
---- Broadcasts a ``CustomEvent`` to all WebSocket clients. Receivers are clients which are identified and subscribed
 methods.broadcastCustomEvent = function(self: OBSWebSocket, eventData: Types.Object)
-	local response = self:_makeRequest("BroadcastCustomEvent", eventData)
+	self:request("BroadcastCustomEvent", eventData)
 end
 
 type CallVendorRequestResponse = {
-	--- Name of the vendor to use
 	vendorName: string,
-	--- The request type to call
 	requestType: string,
-	--- Object containing appropriate request data
 	responseData: Types.Object,
 }
---- Call a request registered to a vendor.
----
---- A vendor is a unique name registered by a third-party plugin or script, which allows for custom requests and events to be added to obs-websocket.
---- If a plugin or script implements vendor requests or events, documentation is expected to be provided with them.
 methods.callVendorRequest = function(
 	self: OBSWebSocket,
 	vendorName: string,
 	requestType: string,
 	requestData: { [string]: any }?
 )
-	local response = self:_makeRequest("CallVendorRequest", {
+	local response = self:request("CallVendorRequest", {
 		vendorName = vendorName,
 		requestType = requestType,
 		requestData = requestData,
 	})
-	return response.d.responseData :: any
+	return response :: any
 end
 
---- Gets an array of all hotkey names in OBS
----
---- Note: Hotkey functionality in obs-websocket comes as-is, and we do not guarantee support if things are broken.
---- In 9/10 usages of hotkey requests, there exists a better, more reliable method via other requests
 methods.getHotkeyList = function(self: OBSWebSocket): { string }
-	local response = self:_makeRequest("GetHotkeyList")
-	return response.d.responseData.hotkeys :: any
+	local response = self:request("GetHotkeyList")
+	return response.hotkeys :: any
 end
 
---- Triggers a hotkey using its name. See ``getHotkeyList``
----
---- Note: Hotkey functionality in obs-websocket comes as-is, and we do not guarantee support if things are broken.
---- In 9/10 usages of hotkey requests, there exists a better, more reliable method via other requests
 methods.triggerHotkeyByName = function(self: OBSWebSocket, hotkeyName: string, contextName: string?)
-	local response = self:_makeRequest("TriggerHotkeyByName", {
+	self:request("TriggerHotkeyByName", {
 		hotkeyName = hotkeyName,
 		contextName = contextName,
 	})
 end
 
 type KeyModifiers = {
-	--- Press Shift
 	shift: boolean?,
-	--- Press CTRL
 	control: boolean?,
-	--- Press ALT
 	alt: boolean?,
-	--- Press CMD (Mac)
 	command: boolean?,
 }
---- Triggers a hotkey using a sequence of keys
----
---- Note: Hotkey functionality in obs-websocket comes as-is, and we do not guarantee support if things are broken.
---- In 9/10 usages of hotkey requests, there exists a better, more reliable method via other requests
 methods.triggerHotkeyByKeySequence = function(self: OBSWebSocket, keyId: string, keyModifiers: KeyModifiers)
-	local response = self:_makeRequest("TriggerHotkeyByKeySequence", {
+	self:request("TriggerHotkeyByKeySequence", {
 		keyId = keyId,
 		keyModifiers = keyModifiers,
 	})
@@ -317,15 +313,13 @@ end
 
 -- ### Config Requests ###
 
-type RealmType = "OBS_WEBSOCKET_DATA_REALM_GLOBAL" | "OBS_WEBSOCKET_DATA_REALM_PROFILE"
---- Gets the value of a "slot" from the selected persistent data realm
-methods.getPersistentData = function(self: OBSWebSocket, realm: RealmType, slotName: string): Types.JSONType?
-	local response = self:_makeRequest("GetPersistentData", {
+methods.getPersistentData = function(self: OBSWebSocket, realm: Enums.ObsRealmType, slotName: string): any?
+	local response = self:request("GetPersistentData", {
 		realm = realm,
 		slotName = slotName,
 	})
 
-	local slotValue: any = (response.d.responseData :: any).slotValue
+	local slotValue: any = response.slotValue
 	if slotValue == serde.json.Values.Null then
 		slotValue = nil
 	end
@@ -333,9 +327,8 @@ methods.getPersistentData = function(self: OBSWebSocket, realm: RealmType, slotN
 	return slotValue :: any
 end
 
---- Sets the value of a "slot" from the selected persistent data realm
-methods.setPersistentData = function(self: OBSWebSocket, realm: RealmType, slotName: string, slotValue: Types.JSONType)
-	local response = self:_makeRequest("SetPersistentData", {
+methods.setPersistentData = function(self: OBSWebSocket, realm: Enums.ObsRealmType, slotName: string, slotValue: any)
+	local response = self:request("SetPersistentData", {
 		realm = realm,
 		slotName = slotName,
 		slotValue = slotValue,
@@ -343,81 +336,65 @@ methods.setPersistentData = function(self: OBSWebSocket, realm: RealmType, slotN
 end
 
 type GetSceneCollectionListResponse = {
-	--- The name of the current scene collection
 	currentSceneCollectionName: string,
-	--- Array of all available scene collections
 	sceneCollections: { string },
 }
---- Gets an array of all scene collections
 methods.getSceneCollectionList = function(self: OBSWebSocket): GetSceneCollectionListResponse
-	local response = self:_makeRequest("GetSceneCollectionList")
-	return response.d.responseData :: any
+	local response = self:request("GetSceneCollectionList")
+	return response :: any
 end
 
---- Switches to a scene collection
----
---- Note: This will block until the collection has finished changing
 methods.setCurrentSceneCollection = function(self: OBSWebSocket, sceneCollectionName: string)
-	local response = self:_makeRequest("SetCurrentSceneCollection", {
+	self:request("SetCurrentSceneCollection", {
 		sceneCollectionName = sceneCollectionName,
 	})
 end
 
---- Creates a new scene collection, switching to it in the process
----
---- Note: This will block until the collection has finished changing
 methods.createSceneCollection = function(self: OBSWebSocket, sceneCollectionName: string)
-	local response = self:_makeRequest("CreateSceneCollection", {
+	self:request("CreateSceneCollection", {
 		sceneCollectionName = sceneCollectionName,
 	})
 end
 
 type GetProfileListResponse = {
-	--- The name of the current profile
 	currentProfileName: string,
-	--- Array of all available profiles
 	profiles: { string },
 }
---- Gets an array of all profiles
 methods.getProfileList = function(self: OBSWebSocket): GetProfileListResponse
-	local response = self:_makeRequest("GetProfileList")
-	return response.d.responseData :: any
+	local response = self:request("GetProfileList")
+	return response :: any
 end
 
---- Switches to a profile
 methods.setCurrentProfile = function(self: OBSWebSocket, profileName: string)
-	local response = self:_makeRequest("SetCurrentProfile", {
+	self:request("SetCurrentProfile", {
 		profileName = profileName,
 	})
 end
 
---- Creates a new profile, switching to it in the process
 methods.createProfile = function(self: OBSWebSocket, profileName: string)
-	local response = self:_makeRequest("CreateProfile", {
+	self:request("CreateProfile", {
 		profileName = profileName,
 	})
 end
 
---- Removes a profile. If the current profile is chosen, it will change to a different profile first
 methods.removeProfile = function(self: OBSWebSocket, profileName: string)
-	local response = self:_makeRequest("RemoveProfile", {
+	self:request("RemoveProfile", {
 		profileName = profileName,
 	})
 end
 
---- Gets a parameter from the current profile's configuration.
 methods.getProfileParameter = function(
 	self: OBSWebSocket,
 	parameterCategory: string,
 	parameterName: string
 ): (string?, string?)
-	local response = self:_makeRequest("GetProfileParameter", {
+	local response = self:request("GetProfileParameter", {
 		parameterCategory = parameterCategory,
 		parameterName = parameterName,
 	})
 
-	local parameterValue: string? = (response.d.responseData :: any).parameterValue
-	local defaultParameterValue: string? = (response.d.responseData :: any).defaultParameterValue
+	local parameterValue: string? = response.parameterValue :: any
+	local defaultParameterValue: string? = response.defaultParameterValue :: any
 	if parameterValue == serde.json.Values.Null then
 		parameterValue = nil
 	end
@@ -427,14 +404,13 @@ methods.getProfileParameter = function(
 	return parameterValue, defaultParameterValue
 end
 
---- Sets the value of a parameter in the current profile's configuration.
 methods.setProfileParameter = function(
 	self: OBSWebSocket,
 	parameterCategory: string,
 	parameterName: string,
 	parameterValue: string?
 )
-	local response = self:_makeRequest("SetProfileParameter", {
+	self:request("SetProfileParameter", {
 		parameterCategory = parameterCategory,
 		parameterName = parameterName,
 		parameterValue = parameterValue,
@@ -455,75 +431,88 @@ type GetVideoSettingsResponse = {
 	--- Height of the output resolution in pixels
 	outputHeight: number,
 }
---- Gets the current video settings
----
---- Note: To get the true FPS value, divide the FPS numerator by the FPS denominator. Example: ``60000/1001``
 methods.getVideoSettings = function(self: OBSWebSocket): GetVideoSettingsResponse
-	local response = self:_makeRequest("GetVideoSettings")
+	local response = self:request("GetVideoSettings")
 
-	return response.d.responseData :: any
+	return response :: any
 end
 
 type NewVideoSettings = {
-	--- Numerator of the fractional FPS value
 	fpsNumerator: number?,
-	--- Denominator of the fractional FPS value
 	fpsDenominator: number?,
-	--- Width of the base (canvas) resolution in pixels
 	baseWidth: number?,
-	--- Height of the base (canvas) resolution in pixels
 	baseHeight: number?,
-	--- Width of the output resolution in pixels
 	outputWidth: number?,
-	--- Height of the output resolution in pixels
 	outputHeight: number?,
 }
---- Sets the current video settings
----
---- Note: Fields must be specified in pairs. For example, you cannot set only ``baseWidth`` without needing to specify ``baseHeight``
 methods.setVideoSettings = function(self: OBSWebSocket, newSettings: NewVideoSettings)
-	local response = self:_makeRequest("SetVideoSettings", newSettings)
+	self:request("SetVideoSettings", newSettings)
 end
 
 type GetStreamServiceSettingsResponse = {
-	--- Stream service type, like ``rtmp_custom`` or ``rtmp_common``
 	streamServiceType: string,
-	--- Stream service settings
 	streamServiceSettings: Types.Object,
 }
---- Gets the current stream service settings (stream destination)
 methods.getStreamServiceSettings = function(self: OBSWebSocket): GetStreamServiceSettingsResponse
-	local response = self:_makeRequest("GetStreamServiceSettings")
+	local response = self:request("GetStreamServiceSettings")
 
-	return response.d.responseData :: any
+	return response :: any
 end
 
 type NewStreamServiceSettings = {
-	--- Type of stream service to apply. Example: ``rtmp_common`` or ``rtmp_custom``
 	streamServiceType: string,
-	--- Settings to apply to the service
 	streamServiceSettings: Types.Object,
 }
---- Sets the current stream service settings (stream destination)
----
---- Note: Simple RTMP settings can be set with type ``rtmp_custom`` and the settings fields ``server`` and ``key``
 methods.setStreamServiceSettings = function(self: OBSWebSocket, newSettings: NewStreamServiceSettings)
-	self:_makeRequest("SetStreamServiceSettings", newSettings)
+	self:request("SetStreamServiceSettings", newSettings)
 end
 
---- Gets the current directory that the record output is set to
 methods.getRecordDirectory = function(self: OBSWebSocket): string
-	local response = self:_makeRequest("GetRecordDirectory")
+	local response = self:request("GetRecordDirectory")
 
-	return response.d.responseData.recordDirectory :: any
+	return response.recordDirectory :: any
 end
 
---- Sets the current directory that the record output writes files to
 methods.setRecordDirectory = function(self: OBSWebSocket, recordDirectory: string)
-	self:_makeRequest("SetRecordDirectory", { recordDirectory = recordDirectory })
+	self:request("SetRecordDirectory", { recordDirectory = recordDirectory })
 end
 
 -- ### Sources Requests ###
+
+type GetSourceActiveResponse = {
+	videoActive: boolean,
+	videoShowing: boolean,
+}
+type GetSourceActiveOptions = {
+	sourceName: string?,
+	sourceUuid: string?,
+}
+methods.getSourceActive = function(self: OBSWebSocket, options: GetSourceActiveOptions?): GetSourceActiveResponse
+	local response = self:request("GetSourceActive", options)
+
+	return response :: any
+end
+
+type GetSourceScreenshotOptions = {
+	sourceName: string?,
+	sourceUuid: string?,
+	imageFormat: string,
+	imageWidth: number?,
+	imageHeight: number?,
+	imageCompressionQuality: number?,
+}
+methods.getSourceScreenshot = function(self: OBSWebSocket, options: GetSourceActiveOptions): string
+	local response = self:request("GetSourceScreenshot", options)
+
+	return response.imageData :: any
+end
+
+type SaveSourceScreenshotOptions = GetSourceScreenshotOptions & {
+	imageFilePath: string,
+}
+methods.saveSourceScreenshot = function(self: OBSWebSocket, options: SaveSourceScreenshotOptions)
+	self:request("SaveSourceScreenshot", options)
+end
 
 -- ### Scenes Requests ###
 
@@ -537,36 +526,283 @@ end
 
 -- ### Outputs Requests ###
 
---- Gets the status of the virtualcam output
 methods.getVirtualCamStatus = function(self: OBSWebSocket): boolean
-	local response = self:_makeRequest("GetVirtualCamStatus")
+	local response = self:request("GetVirtualCamStatus")
 
-	return response.d.responseData.outputActive :: any
+	return response.outputActive :: any
 end
 
---- Toggles the state of the virtualcam output
 methods.toggleVirtualCam = function(self: OBSWebSocket): boolean
-	local response = self:_makeRequest("ToggleVirtualCam")
+	local response = self:request("ToggleVirtualCam")
 
-	return response.d.responseData.outputActive :: any
+	return response.outputActive :: any
 end
 
---- Starts the virtualcam output
 methods.startVirtualCam = function(self: OBSWebSocket)
-	self:_makeRequest("StartVirtualCam")
+	self:request("StartVirtualCam")
 end
 
---- Stops the virtualcam output
 methods.stopVirtualCam = function(self: OBSWebSocket)
-	self:_makeRequest("StopVirtualCam")
+	self:request("StopVirtualCam")
+end
+
+methods.getReplayBufferStatus = function(self: OBSWebSocket): boolean
+	local response = self:request("GetReplayBufferStatus")
+
+	return response.outputActive :: any
+end
+
+methods.toggleReplayBuffer = function(self: OBSWebSocket): boolean
+	local response = self:request("ToggleReplayBuffer")
+
+	return response.outputActive :: any
+end
+
+methods.startReplayBuffer = function(self: OBSWebSocket)
+	self:request("StartReplayBuffer")
+end
+
+methods.stopReplayBuffer = function(self: OBSWebSocket)
+	self:request("StopReplayBuffer")
+end
+
+methods.saveReplayBuffer = function(self: OBSWebSocket)
+	self:request("SaveReplayBuffer")
+end
+
+methods.getLastReplayBufferReplay = function(self: OBSWebSocket): string
+	local response = self:request("GetLastReplayBufferReplay")
+
+	return response.savedReplayPath :: any
+end
+
+methods.getOutputList = function(self: OBSWebSocket): { Types.Object }
+	local response = self:request("GetOutputList")
+
+	return response.outputs :: any
+end
+
+type GetOutputStatusResponse = {
+	outputActive: boolean,
+	outputReconnecting: boolean,
+	outputTimecode: string,
+	outputDuration: number,
+	outputCongestion: number,
+	outputBytes: number,
+	outputSkippedFrames: number,
+	outputTotalFrames: number,
+}
+methods.getOutputStatus = function(self: OBSWebSocket, outputName: string): GetOutputStatusResponse
+	local response = self:request("GetOutputStatus", { outputName = outputName })
+
+	return response :: any
+end
+
+methods.toggleOutput = function(self: OBSWebSocket, outputName: string): boolean
+	local response = self:request("ToggleOutput", { outputName = outputName })
+
+	return response.outputActive :: any
+end
+
+methods.startOutput = function(self: OBSWebSocket, outputName: string)
+	self:request("StartOutput", { outputName = outputName })
+end
+
+methods.stopOutput = function(self: OBSWebSocket, outputName: string)
+	self:request("StopOutput", { outputName = outputName })
+end
+
+methods.getOutputSettings = function(self: OBSWebSocket, outputName: string): Types.Object
+	local response = self:request("GetOutputSettings", { outputName = outputName })
+
+	return response.outputSettings :: any
+end
+
+methods.setOutputSettings = function(self: OBSWebSocket, outputName: string, outputSettings: Types.Object)
+	self:request("StopOutput", { outputName = outputName, outputSettings = outputSettings })
 end
 
 -- ### Stream Requests ###
 
+type GetStreamStatusResponse = {
+	outputActive: boolean,
+	outputReconnecting: boolean,
+	outputTimecode: string,
+	outputDuration: number,
+	outputCongestion: number,
+	outputBytes: number,
+	outputSkippedFrames: number,
+	outputTotalFrames: number,
+}
+methods.getStreamStatus = function(self: OBSWebSocket): GetStreamStatusResponse
+	local response = self:request("GetStreamStatus")
+
+	return response :: any
+end
+
+methods.toggleStream = function(self: OBSWebSocket): boolean
+	local response = self:request("ToggleStream")
+
+	return response.outputActive :: any
+end
+
+methods.startStream = function(self: OBSWebSocket)
+	self:request("StartStream")
+end
+
+methods.stopStream = function(self: OBSWebSocket)
+	self:request("StopStream")
+end
+
+methods.sendStreamCaption = function(self: OBSWebSocket, captionText: string)
+	self:request("SendStreamCaption", { captionText = captionText })
+end
+
 -- ### Record Requests ###
+
+type GetRecordStatusResponse = {
+	outputActive: boolean,
+	outputPaused: boolean,
+	outputTimecode: string,
+	outputDuration: number,
+	outputBytes: number,
+}
+methods.getRecordStatus = function(self: OBSWebSocket): GetRecordStatusResponse
+	local response = self:request("GetRecordStatus")
+
+	return response :: any
+end
+
+methods.toggleRecord = function(self: OBSWebSocket): boolean
+	local response = self:request("ToggleRecord")
+
+	return response.outputActive :: any
+end
+
+methods.startRecord = function(self: OBSWebSocket)
+	self:request("StartRecord")
+end
+
+methods.stopRecord = function(self: OBSWebSocket)
+	self:request("StopRecord")
+end
+
+methods.toggleRecordPause = function(self: OBSWebSocket)
+	self:request("ToggleRecordPause")
+end
+
+methods.pauseRecord = function(self: OBSWebSocket)
+	self:request("PauseRecord")
+end
+
+methods.resumeRecord = function(self: OBSWebSocket)
+	self:request("ResumeRecord")
+end
+
+methods.splitRecordFile = function(self: OBSWebSocket)
+	self:request("SplitRecordFile")
+end
+
+methods.createRecordChapter = function(self: OBSWebSocket, chapterName: string?)
+	self:request("CreateRecordChapter", { chapterName = chapterName })
+end
 
 -- ### Media Inputs Requests ###
 
+type GetMediaInputStatusOptions = {
+	inputName: string?,
+	inputUuid: string?,
+}
+type GetMediaInputStatusResponse = {
+	mediaState: Enums.ObsMediaState,
+	mediaDuration: number?,
+	mediaCursor: number?,
+}
+methods.getMediaInputStatus = function(
+	self: OBSWebSocket,
+	options: GetMediaInputStatusOptions
+): GetMediaInputStatusResponse
+	local response = self:request("GetMediaInputStatus")
+
+	return response :: any
+end
+
+type SetMediaInputCursorOptions = GetMediaInputStatusOptions & {
+	mediaCursor: number,
+}
+methods.setMediaInputCursor = function(self: OBSWebSocket, options: SetMediaInputCursorOptions)
+	self:request("SetMediaInputCursor", options)
+end
+
+type OffsetMediaInputCursorOptions = GetMediaInputStatusOptions & {
+	mediaCursorOffset: number,
+}
+methods.offsetMediaInputCursor = function(self: OBSWebSocket, options: OffsetMediaInputCursorOptions)
+	self:request("OffsetMediaInputCursor", options)
+end
+
+type TriggerMediaInputActionOptions = GetMediaInputStatusOptions & {
+	mediaAction: string,
+}
+methods.triggerMediaInputAction = function(self: OBSWebSocket, options: TriggerMediaInputActionOptions)
+	self:request("TriggerMediaInputAction", options)
+end
+
 -- ### Ui Requests Requests ###
+
+methods.getStudioModeEnabled = function(self: OBSWebSocket): boolean
+	local response = self:request("GetStudioModeEnabled")
+
+	return response.studioModeEnabled :: any
+end
+
+methods.setStudioModeEnabled = function(self: OBSWebSocket, newState: boolean)
+	self:request("TriggerMediaInputAction", { studioModeEnabled = newState })
+end
+
+type OpenInputPropertiesDialogOptions = {
+	inputName: string?,
+	inputUuid: string?,
+}
+methods.openInputPropertiesDialog = function(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
+	self:request("OpenInputPropertiesDialog", options)
+end
+
+methods.openInputFiltersDialog = function(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
+	self:request("OpenInputFiltersDialog", options)
+end
+
+methods.openInputInteractDialog = function(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
+	self:request("OpenInputInteractDialog", options)
+end
+
+methods.getMonitorList = function(self: OBSWebSocket): { Types.Object }
+	local response = self:request("GetMonitorList")
+
+	return response.monitors :: any
+end
+
+methods.openVideoMixProjector = function(
+	self: OBSWebSocket,
+	videoMixType: Enums.ObsVideoMixType,
+	monitorIndex: number?,
+	projectorGeometry: string?
+)
+	self:request("OpenVideoMixProjector", {
+		videoMixType = videoMixType,
+		monitorIndex = monitorIndex,
+		projectorGeometry = projectorGeometry,
+	})
+end
+
+type OpenSourceProjectorOptions = {
+	sourceName: string,
+	sourceUuid: string,
+	monitorIndex: number,
+	projectorGeometry: string,
+}
+methods.openSourceProjector = function(self: OBSWebSocket, options: OpenSourceProjectorOptions)
+	self:request("OpenSourceProjector", options)
+end
 
 return webSocket
