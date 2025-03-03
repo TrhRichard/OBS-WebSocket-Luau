@@ -1,28 +1,3 @@
---[[
-
-TODO: 
-	* implement batch requests
-	* add the remaining requests:
-		- General Requests: DONE
-		- Config Requests: DONE
-		- Sources Requests:
-		- Scenes Requests:
-		- Inputs Requests:
-		- Transitions Requests:
-		- Filters Requests: 
-		- Scene Items Requests:
-		- Outputs Requests:
-		- Stream Requests:
-		- Record Requests:
-		- Media Inputs Requests:
-		- Ui Requsts:
-
-	Follow this format:
-		For requests that have multiple keys, return the object (for example: getStats)
-		For requests that have one key, return the value of the key (for example: getPersistentData)
-		For requests that have two keys and have same type, return a tuple of both (for example: getProfileParameter)
-]]
-
 local net = zune.net
 local serde = zune.serde
 local task = zune.task

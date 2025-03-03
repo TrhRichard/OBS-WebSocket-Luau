@@ -1,10 +1,8 @@
 local process = zune.process
 
-local OBSWebSocket = require("@src/")
+local OBSWebSocket = require("../src/")
 
 local obs = OBSWebSocket.new()
-
-print(getmetatable(obs))
 
 obs.onReady:Connect(function()
 	print("Connected to OBS!")
