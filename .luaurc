@@ -1,0 +1,12 @@
+{
+	"languageMode": "strict",
+	"lint": {
+		"LocalShadow": false,
+		"LocalUnused": false,
+		"ImportUnused": false
+	},
+	"aliases": {
+		"src": "./src",
+		"std": "c:\\Users\\Richard\\.custombin\\lib\\std"
+	}
+}
