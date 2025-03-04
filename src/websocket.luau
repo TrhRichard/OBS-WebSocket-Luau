@@ -19,10 +19,8 @@ local function getTableIndex<T, V>(table: { [T]: V }, value: V): T?
 	return nil
 end
 
-local webSocket = {}
-local meta = {}
-local methods = {}
-meta.__index = methods
+local OBSWebSocket = {}
+OBSWebSocket.__index = OBSWebSocket
 
 export type OBSWebSocket = typeof(setmetatable(
 	{} :: {
@@ -40,11 +38,11 @@ export type OBSWebSocket = typeof(setmetatable(
 		onReady: LemonSignal.Signal<>,
 		onSocketClosed: LemonSignal.Signal<number?, string?>,
 	},
-	meta
+	OBSWebSocket
 ))
 
-webSocket.new = function(): OBSWebSocket
-	local self: OBSWebSocket = setmetatable({}, meta) :: any
+function OBSWebSocket.new(): OBSWebSocket
+	local self: OBSWebSocket = setmetatable({}, OBSWebSocket) :: any
 
 	self._onOpCode = LemonSignal.new() :: any
 	self._handlers = {}
@@ -60,7 +58,7 @@ type IdentifyParams = {
 	rpcVersion: number,
 	eventSubscriptions: number?,
 }
-methods.connect = function(self: OBSWebSocket, password: string?, url: string?, identifyParams: IdentifyParams?)
+function OBSWebSocket.connect(self: OBSWebSocket, password: string?, url: string?, identifyParams: IdentifyParams?)
 	assert(not self.connected, "Already connected to OBS")
 
 	local connectUrl = url or "ws://localhost:4455"
@@ -137,16 +135,14 @@ methods.connect = function(self: OBSWebSocket, password: string?, url: string?, 
 	})
 end
 
-methods.on = (
-	function(self: OBSWebSocket, eventType: string, handler: (data: {}) -> ())
-		if not self._handlers[eventType] then
-			self._handlers[eventType] = {}
-		end
-		table.insert(self._handlers[eventType], handler :: any)
-	end :: any
-) :: Types.OnEventHandle<OBSWebSocket>
+function OBSWebSocket.on(self: OBSWebSocket, eventType: Types.RequestType, handler: (eventData: Types.Object) -> ())
+	if not self._handlers[eventType] then
+		self._handlers[eventType] = {}
+	end
+	table.insert(self._handlers[eventType], handler :: any)
+end
 
-methods.reidentify = function(self: OBSWebSocket, newEventSubscriptions: number?)
+function OBSWebSocket.reidentify(self: OBSWebSocket, newEventSubscriptions: number?)
 	self._socket:send(serde.json.encode({
 		op = 3,
 		d = {
@@ -155,7 +151,11 @@ methods.reidentify = function(self: OBSWebSocket, newEventSubscriptions: number?
 	} :: Types.ReidentifyOpCode))
 end
 
-methods.request = function(self: OBSWebSocket, requestType: Types.RequestType, requestData: {}?): Types.Object
+function OBSWebSocket.request(
+	self: OBSWebSocket,
+	requestType: Types.RequestType,
+	requestData: Types.Object?
+): Types.Object
 	local generatedUuid = uuid()
 
 	self._socket:send(serde.json.encode({
@@ -190,27 +190,26 @@ methods.request = function(self: OBSWebSocket, requestType: Types.RequestType, r
 	return finalJson.d.responseData :: any
 end
 
-type BatchRequestParams = {
-	haltOnFailure: boolean?,
-	executionType: number?,
-	requests: {
-		{
-			requestType: Types.RequestType,
-			requestId: string?,
-			requestData: Types.Object?,
-		}
-	},
+type Request = {
+	requestType: Types.RequestType,
+	requestId: string?,
+	requestData: Types.Object?,
 }
-methods.batchRequest = function(self: OBSWebSocket, params: BatchRequestParams): { Types.Object }
+function OBSWebSocket.batchRequest(
+	self: OBSWebSocket,
+	requests: { Request },
+	haltOnFailure: boolean?,
+	executionType: number?
+): { Types.Object }
 	local generatedUuid = uuid()
 
 	self._socket:send(serde.json.encode({
 		op = Enums.WebSocketOpCode.RequestBatch,
 		d = {
 			requestId = generatedUuid,
-			haltOnFailure = params.haltOnFailure,
-			executionType = params.executionType,
-			requests = params.requests,
+			haltOnFailure = haltOnFailure,
+			executionType = executionType,
+			requests = requests,
 		},
 	} :: Types.RequestBatchOpCode))
 
@@ -240,7 +239,7 @@ type GetVersionResponse = {
 	platform: string,
 	platformDescription: string,
 }
-methods.getVersion = function(self: OBSWebSocket): GetVersionResponse
+function OBSWebSocket.getVersion(self: OBSWebSocket): GetVersionResponse
 	local response = self:request("GetVersion")
 	return response :: any
 end
@@ -258,12 +257,12 @@ type GetStatsResponse = {
 	webSocketSessionIncomingMessages: number,
 	webSocketSessionOutgoingMessages: number,
 }
-methods.getStats = function(self: OBSWebSocket): GetStatsResponse
+function OBSWebSocket.getStats(self: OBSWebSocket): GetStatsResponse
 	local response = self:request("GetStats")
 	return response :: any
 end
 
-methods.broadcastCustomEvent = function(self: OBSWebSocket, eventData: Types.Object)
+function OBSWebSocket.broadcastCustomEvent(self: OBSWebSocket, eventData: Types.Object)
 	self:request("BroadcastCustomEvent", eventData)
 end
 
@@ -272,7 +271,7 @@ type CallVendorRequestResponse = {
 	requestType: string,
 	responseData: Types.Object,
 }
-methods.callVendorRequest = function(
+function OBSWebSocket.callVendorRequest(
 	self: OBSWebSocket,
 	vendorName: string,
 	requestType: string,
@@ -286,12 +285,12 @@ methods.callVendorRequest = function(
 	return response :: any
 end
 
-methods.getHotkeyList = function(self: OBSWebSocket): { string }
+function OBSWebSocket.getHotkeyList(self: OBSWebSocket): { string }
 	local response = self:request("GetHotkeyList")
 	return response.hotkeys :: any
 end
 
-methods.triggerHotkeyByName = function(self: OBSWebSocket, hotkeyName: string, contextName: string?)
+function OBSWebSocket.triggerHotkeyByName(self: OBSWebSocket, hotkeyName: string, contextName: string?)
 	self:request("TriggerHotkeyByName", {
 		hotkeyName = hotkeyName,
 		contextName = contextName,
@@ -304,7 +303,7 @@ type KeyModifiers = {
 	alt: boolean?,
 	command: boolean?,
 }
-methods.triggerHotkeyByKeySequence = function(self: OBSWebSocket, keyId: string, keyModifiers: KeyModifiers)
+function OBSWebSocket.triggerHotkeyByKeySequence(self: OBSWebSocket, keyId: string, keyModifiers: KeyModifiers)
 	self:request("TriggerHotkeyByKeySequence", {
 		keyId = keyId,
 		keyModifiers = keyModifiers,
@@ -313,7 +312,7 @@ end
 
 -- ### Config Requests ###
 
-methods.getPersistentData = function(self: OBSWebSocket, realm: Enums.ObsRealmType, slotName: string): any?
+function OBSWebSocket.getPersistentData(self: OBSWebSocket, realm: Enums.ObsRealmType, slotName: string): any?
 	local response = self:request("GetPersistentData", {
 		realm = realm,
 		slotName = slotName,
@@ -327,7 +326,7 @@ methods.getPersistentData = function(self: OBSWebSocket, realm: Enums.ObsRealmTy
 	return slotValue :: any
 end
 
-methods.setPersistentData = function(self: OBSWebSocket, realm: Enums.ObsRealmType, slotName: string, slotValue: any)
+function OBSWebSocket.setPersistentData(self: OBSWebSocket, realm: Enums.ObsRealmType, slotName: string, slotValue: any)
 	local response = self:request("SetPersistentData", {
 		realm = realm,
 		slotName = slotName,
@@ -339,18 +338,18 @@ type GetSceneCollectionListResponse = {
 	currentSceneCollectionName: string,
 	sceneCollections: { string },
 }
-methods.getSceneCollectionList = function(self: OBSWebSocket): GetSceneCollectionListResponse
+function OBSWebSocket.getSceneCollectionList(self: OBSWebSocket): GetSceneCollectionListResponse
 	local response = self:request("GetSceneCollectionList")
 	return response :: any
 end
 
-methods.setCurrentSceneCollection = function(self: OBSWebSocket, sceneCollectionName: string)
+function OBSWebSocket.setCurrentSceneCollection(self: OBSWebSocket, sceneCollectionName: string)
 	self:request("SetCurrentSceneCollection", {
 		sceneCollectionName = sceneCollectionName,
 	})
 end
 
-methods.createSceneCollection = function(self: OBSWebSocket, sceneCollectionName: string)
+function OBSWebSocket.createSceneCollection(self: OBSWebSocket, sceneCollectionName: string)
 	self:request("CreateSceneCollection", {
 		sceneCollectionName = sceneCollectionName,
 	})
@@ -360,30 +359,30 @@ type GetProfileListResponse = {
 	currentProfileName: string,
 	profiles: { string },
 }
-methods.getProfileList = function(self: OBSWebSocket): GetProfileListResponse
+function OBSWebSocket.getProfileList(self: OBSWebSocket): GetProfileListResponse
 	local response = self:request("GetProfileList")
 	return response :: any
 end
 
-methods.setCurrentProfile = function(self: OBSWebSocket, profileName: string)
+function OBSWebSocket.setCurrentProfile(self: OBSWebSocket, profileName: string)
 	self:request("SetCurrentProfile", {
 		profileName = profileName,
 	})
 end
 
-methods.createProfile = function(self: OBSWebSocket, profileName: string)
+function OBSWebSocket.createProfile(self: OBSWebSocket, profileName: string)
 	self:request("CreateProfile", {
 		profileName = profileName,
 	})
 end
 
-methods.removeProfile = function(self: OBSWebSocket, profileName: string)
+function OBSWebSocket.removeProfile(self: OBSWebSocket, profileName: string)
 	self:request("RemoveProfile", {
 		profileName = profileName,
 	})
 end
 
-methods.getProfileParameter = function(
+function OBSWebSocket.getProfileParameter(
 	self: OBSWebSocket,
 	parameterCategory: string,
 	parameterName: string
@@ -404,7 +403,7 @@ methods.getProfileParameter = function(
 	return parameterValue, defaultParameterValue
 end
 
-methods.setProfileParameter = function(
+function OBSWebSocket.setProfileParameter(
 	self: OBSWebSocket,
 	parameterCategory: string,
 	parameterName: string,
@@ -431,7 +430,7 @@ type GetVideoSettingsResponse = {
 	--- Height of the output resolution in pixels
 	outputHeight: number,
 }
-methods.getVideoSettings = function(self: OBSWebSocket): GetVideoSettingsResponse
+function OBSWebSocket.getVideoSettings(self: OBSWebSocket): GetVideoSettingsResponse
 	local response = self:request("GetVideoSettings")
 
 	return response :: any
@@ -445,7 +444,7 @@ type NewVideoSettings = {
 	outputWidth: number?,
 	outputHeight: number?,
 }
-methods.setVideoSettings = function(self: OBSWebSocket, newSettings: NewVideoSettings)
+function OBSWebSocket.setVideoSettings(self: OBSWebSocket, newSettings: NewVideoSettings)
 	self:request("SetVideoSettings", newSettings)
 end
 
@@ -453,7 +452,7 @@ type GetStreamServiceSettingsResponse = {
 	streamServiceType: string,
 	streamServiceSettings: Types.Object,
 }
-methods.getStreamServiceSettings = function(self: OBSWebSocket): GetStreamServiceSettingsResponse
+function OBSWebSocket.getStreamServiceSettings(self: OBSWebSocket): GetStreamServiceSettingsResponse
 	local response = self:request("GetStreamServiceSettings")
 
 	return response :: any
@@ -463,17 +462,17 @@ type NewStreamServiceSettings = {
 	streamServiceType: string,
 	streamServiceSettings: Types.Object,
 }
-methods.setStreamServiceSettings = function(self: OBSWebSocket, newSettings: NewStreamServiceSettings)
+function OBSWebSocket.setStreamServiceSettings(self: OBSWebSocket, newSettings: NewStreamServiceSettings)
 	self:request("SetStreamServiceSettings", newSettings)
 end
 
-methods.getRecordDirectory = function(self: OBSWebSocket): string
+function OBSWebSocket.getRecordDirectory(self: OBSWebSocket): string
 	local response = self:request("GetRecordDirectory")
 
 	return response.recordDirectory :: any
 end
 
-methods.setRecordDirectory = function(self: OBSWebSocket, recordDirectory: string)
+function OBSWebSocket.setRecordDirectory(self: OBSWebSocket, recordDirectory: string)
 	self:request("SetRecordDirectory", { recordDirectory = recordDirectory })
 end
 
@@ -487,7 +486,7 @@ type GetSourceActiveOptions = {
 	sourceName: string?,
 	sourceUuid: string?,
 }
-methods.getSourceActive = function(self: OBSWebSocket, options: GetSourceActiveOptions?): GetSourceActiveResponse
+function OBSWebSocket.getSourceActive(self: OBSWebSocket, options: GetSourceActiveOptions?): GetSourceActiveResponse
 	local response = self:request("GetSourceActive", options)
 
 	return response :: any
@@ -501,7 +500,7 @@ type GetSourceScreenshotOptions = {
 	imageHeight: number?,
 	imageCompressionQuality: number?,
 }
-methods.getSourceScreenshot = function(self: OBSWebSocket, options: GetSourceActiveOptions): string
+function OBSWebSocket.getSourceScreenshot(self: OBSWebSocket, options: GetSourceActiveOptions): string
 	local response = self:request("GetSourceScreenshot", options)
 
 	return response.imageData :: any
@@ -510,7 +509,7 @@ end
 type SaveSourceScreenshotOptions = GetSourceScreenshotOptions & {
 	imageFilePath: string,
 }
-methods.saveSourceScreenshot = function(self: OBSWebSocket, options: SaveSourceScreenshotOptions)
+function OBSWebSocket.saveSourceScreenshot(self: OBSWebSocket, options: SaveSourceScreenshotOptions)
 	self:request("SaveSourceScreenshot", options)
 end
 
@@ -526,57 +525,57 @@ end
 
 -- ### Outputs Requests ###
 
-methods.getVirtualCamStatus = function(self: OBSWebSocket): boolean
+function OBSWebSocket.getVirtualCamStatus(self: OBSWebSocket): boolean
 	local response = self:request("GetVirtualCamStatus")
 
 	return response.outputActive :: any
 end
 
-methods.toggleVirtualCam = function(self: OBSWebSocket): boolean
+function OBSWebSocket.toggleVirtualCam(self: OBSWebSocket): boolean
 	local response = self:request("ToggleVirtualCam")
 
 	return response.outputActive :: any
 end
 
-methods.startVirtualCam = function(self: OBSWebSocket)
+function OBSWebSocket.startVirtualCam(self: OBSWebSocket)
 	self:request("StartVirtualCam")
 end
 
-methods.stopVirtualCam = function(self: OBSWebSocket)
+function OBSWebSocket.stopVirtualCam(self: OBSWebSocket)
 	self:request("StopVirtualCam")
 end
 
-methods.getReplayBufferStatus = function(self: OBSWebSocket): boolean
+function OBSWebSocket.getReplayBufferStatus(self: OBSWebSocket): boolean
 	local response = self:request("GetReplayBufferStatus")
 
 	return response.outputActive :: any
 end
 
-methods.toggleReplayBuffer = function(self: OBSWebSocket): boolean
+function OBSWebSocket.toggleReplayBuffer(self: OBSWebSocket): boolean
 	local response = self:request("ToggleReplayBuffer")
 
 	return response.outputActive :: any
 end
 
-methods.startReplayBuffer = function(self: OBSWebSocket)
+function OBSWebSocket.startReplayBuffer(self: OBSWebSocket)
 	self:request("StartReplayBuffer")
 end
 
-methods.stopReplayBuffer = function(self: OBSWebSocket)
+function OBSWebSocket.stopReplayBuffer(self: OBSWebSocket)
 	self:request("StopReplayBuffer")
 end
 
-methods.saveReplayBuffer = function(self: OBSWebSocket)
+function OBSWebSocket.saveReplayBuffer(self: OBSWebSocket)
 	self:request("SaveReplayBuffer")
 end
 
-methods.getLastReplayBufferReplay = function(self: OBSWebSocket): string
+function OBSWebSocket.getLastReplayBufferReplay(self: OBSWebSocket): string
 	local response = self:request("GetLastReplayBufferReplay")
 
 	return response.savedReplayPath :: any
 end
 
-methods.getOutputList = function(self: OBSWebSocket): { Types.Object }
+function OBSWebSocket.getOutputList(self: OBSWebSocket): { Types.Object }
 	local response = self:request("GetOutputList")
 
 	return response.outputs :: any
@@ -592,33 +591,33 @@ type GetOutputStatusResponse = {
 	outputSkippedFrames: number,
 	outputTotalFrames: number,
 }
-methods.getOutputStatus = function(self: OBSWebSocket, outputName: string): GetOutputStatusResponse
+function OBSWebSocket.getOutputStatus(self: OBSWebSocket, outputName: string): GetOutputStatusResponse
 	local response = self:request("GetOutputStatus", { outputName = outputName })
 
 	return response :: any
 end
 
-methods.toggleOutput = function(self: OBSWebSocket, outputName: string): boolean
+function OBSWebSocket.toggleOutput(self: OBSWebSocket, outputName: string): boolean
 	local response = self:request("ToggleOutput", { outputName = outputName })
 
 	return response.outputActive :: any
 end
 
-methods.startOutput = function(self: OBSWebSocket, outputName: string)
+function OBSWebSocket.startOutput(self: OBSWebSocket, outputName: string)
 	self:request("StartOutput", { outputName = outputName })
 end
 
-methods.stopOutput = function(self: OBSWebSocket, outputName: string)
+function OBSWebSocket.stopOutput(self: OBSWebSocket, outputName: string)
 	self:request("StopOutput", { outputName = outputName })
 end
 
-methods.getOutputSettings = function(self: OBSWebSocket, outputName: string): Types.Object
+function OBSWebSocket.getOutputSettings(self: OBSWebSocket, outputName: string): Types.Object
 	local response = self:request("GetOutputSettings", { outputName = outputName })
 
 	return response.outputSettings :: any
 end
 
-methods.setOutputSettings = function(self: OBSWebSocket, outputName: string, outputSettings: Types.Object)
+function OBSWebSocket.setOutputSettings(self: OBSWebSocket, outputName: string, outputSettings: Types.Object)
 	self:request("StopOutput", { outputName = outputName, outputSettings = outputSettings })
 end
 
@@ -634,27 +633,27 @@ type GetStreamStatusResponse = {
 	outputSkippedFrames: number,
 	outputTotalFrames: number,
 }
-methods.getStreamStatus = function(self: OBSWebSocket): GetStreamStatusResponse
+function OBSWebSocket.getStreamStatus(self: OBSWebSocket): GetStreamStatusResponse
 	local response = self:request("GetStreamStatus")
 
 	return response :: any
 end
 
-methods.toggleStream = function(self: OBSWebSocket): boolean
+function OBSWebSocket.toggleStream(self: OBSWebSocket): boolean
 	local response = self:request("ToggleStream")
 
 	return response.outputActive :: any
 end
 
-methods.startStream = function(self: OBSWebSocket)
+function OBSWebSocket.startStream(self: OBSWebSocket)
 	self:request("StartStream")
 end
 
-methods.stopStream = function(self: OBSWebSocket)
+function OBSWebSocket.stopStream(self: OBSWebSocket)
 	self:request("StopStream")
 end
 
-methods.sendStreamCaption = function(self: OBSWebSocket, captionText: string)
+function OBSWebSocket.sendStreamCaption(self: OBSWebSocket, captionText: string)
 	self:request("SendStreamCaption", { captionText = captionText })
 end
 
@@ -667,43 +666,43 @@ type GetRecordStatusResponse = {
 	outputDuration: number,
 	outputBytes: number,
 }
-methods.getRecordStatus = function(self: OBSWebSocket): GetRecordStatusResponse
+function OBSWebSocket.getRecordStatus(self: OBSWebSocket): GetRecordStatusResponse
 	local response = self:request("GetRecordStatus")
 
 	return response :: any
 end
 
-methods.toggleRecord = function(self: OBSWebSocket): boolean
+function OBSWebSocket.toggleRecord(self: OBSWebSocket): boolean
 	local response = self:request("ToggleRecord")
 
 	return response.outputActive :: any
 end
 
-methods.startRecord = function(self: OBSWebSocket)
+function OBSWebSocket.startRecord(self: OBSWebSocket)
 	self:request("StartRecord")
 end
 
-methods.stopRecord = function(self: OBSWebSocket)
+function OBSWebSocket.stopRecord(self: OBSWebSocket)
 	self:request("StopRecord")
 end
 
-methods.toggleRecordPause = function(self: OBSWebSocket)
+function OBSWebSocket.toggleRecordPause(self: OBSWebSocket)
 	self:request("ToggleRecordPause")
 end
 
-methods.pauseRecord = function(self: OBSWebSocket)
+function OBSWebSocket.pauseRecord(self: OBSWebSocket)
 	self:request("PauseRecord")
 end
 
-methods.resumeRecord = function(self: OBSWebSocket)
+function OBSWebSocket.resumeRecord(self: OBSWebSocket)
 	self:request("ResumeRecord")
 end
 
-methods.splitRecordFile = function(self: OBSWebSocket)
+function OBSWebSocket.splitRecordFile(self: OBSWebSocket)
 	self:request("SplitRecordFile")
 end
 
-methods.createRecordChapter = function(self: OBSWebSocket, chapterName: string?)
+function OBSWebSocket.createRecordChapter(self: OBSWebSocket, chapterName: string?)
 	self:request("CreateRecordChapter", { chapterName = chapterName })
 end
 
@@ -718,7 +717,7 @@ type GetMediaInputStatusResponse = {
 	mediaDuration: number?,
 	mediaCursor: number?,
 }
-methods.getMediaInputStatus = function(
+function OBSWebSocket.getMediaInputStatus(
 	self: OBSWebSocket,
 	options: GetMediaInputStatusOptions
 ): GetMediaInputStatusResponse
@@ -730,33 +729,33 @@ end
 type SetMediaInputCursorOptions = GetMediaInputStatusOptions & {
 	mediaCursor: number,
 }
-methods.setMediaInputCursor = function(self: OBSWebSocket, options: SetMediaInputCursorOptions)
+function OBSWebSocket.setMediaInputCursor(self: OBSWebSocket, options: SetMediaInputCursorOptions)
 	self:request("SetMediaInputCursor", options)
 end
 
 type OffsetMediaInputCursorOptions = GetMediaInputStatusOptions & {
 	mediaCursorOffset: number,
 }
-methods.offsetMediaInputCursor = function(self: OBSWebSocket, options: OffsetMediaInputCursorOptions)
+function OBSWebSocket.offsetMediaInputCursor(self: OBSWebSocket, options: OffsetMediaInputCursorOptions)
 	self:request("OffsetMediaInputCursor", options)
 end
 
 type TriggerMediaInputActionOptions = GetMediaInputStatusOptions & {
 	mediaAction: string,
 }
-methods.triggerMediaInputAction = function(self: OBSWebSocket, options: TriggerMediaInputActionOptions)
+function OBSWebSocket.triggerMediaInputAction(self: OBSWebSocket, options: TriggerMediaInputActionOptions)
 	self:request("TriggerMediaInputAction", options)
 end
 
 -- ### Ui Requests Requests ###
 
-methods.getStudioModeEnabled = function(self: OBSWebSocket): boolean
+function OBSWebSocket.getStudioModeEnabled(self: OBSWebSocket): boolean
 	local response = self:request("GetStudioModeEnabled")
 
 	return response.studioModeEnabled :: any
 end
 
-methods.setStudioModeEnabled = function(self: OBSWebSocket, newState: boolean)
+function OBSWebSocket.setStudioModeEnabled(self: OBSWebSocket, newState: boolean)
 	self:request("TriggerMediaInputAction", { studioModeEnabled = newState })
 end
 
@@ -764,25 +763,25 @@ type OpenInputPropertiesDialogOptions = {
 	inputName: string?,
 	inputUuid: string?,
 }
-methods.openInputPropertiesDialog = function(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
+function OBSWebSocket.openInputPropertiesDialog(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
 	self:request("OpenInputPropertiesDialog", options)
 end
 
-methods.openInputFiltersDialog = function(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
+function OBSWebSocket.openInputFiltersDialog(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
 	self:request("OpenInputFiltersDialog", options)
 end
 
-methods.openInputInteractDialog = function(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
+function OBSWebSocket.openInputInteractDialog(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
 	self:request("OpenInputInteractDialog", options)
 end
 
-methods.getMonitorList = function(self: OBSWebSocket): { Types.Object }
+function OBSWebSocket.getMonitorList(self: OBSWebSocket): { Types.Object }
 	local response = self:request("GetMonitorList")
 
 	return response.monitors :: any
 end
 
-methods.openVideoMixProjector = function(
+function OBSWebSocket.openVideoMixProjector(
 	self: OBSWebSocket,
 	videoMixType: Enums.ObsVideoMixType,
 	monitorIndex: number?,
@@ -801,8 +800,8 @@ type OpenSourceProjectorOptions = {
 	monitorIndex: number,
 	projectorGeometry: string,
 }
-methods.openSourceProjector = function(self: OBSWebSocket, options: OpenSourceProjectorOptions)
+function OBSWebSocket.openSourceProjector(self: OBSWebSocket, options: OpenSourceProjectorOptions)
 	self:request("OpenSourceProjector", options)
 end
 
-return webSocket
+return OBSWebSocket

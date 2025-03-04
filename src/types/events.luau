@@ -338,6 +338,4 @@ export type EventType = "VendorEvent" | "CustomEvent" |
 "MediaInputPlaybackEnded" | "MediaInputActionTriggered" | 
 "StudioModeStateChanged" | "ScreenshotSaved"
 
-export type OnEventHandle<S> = (S, type: EventType, handler: (...any) -> ()) -> ()
-
 return {}

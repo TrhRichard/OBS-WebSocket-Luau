@@ -5,16 +5,17 @@ local OBSWebSocket = {}
 
 local EventTypes = require("./types/events")
 local Types = require("./types")
+local Enums = require("./enums")
 local websocket = require("./websocket")
 
 export type OBSWebSocket = websocket.OBSWebSocket
 
 OBSWebSocket.new = websocket.new
-OBSWebSocket.Enums = require("./enums")
+OBSWebSocket.Enums = Enums
 
-export type MonitorType = EventTypes.MonitorType
-export type ObsMediaInputAction = EventTypes.ObsMediaInputAction
-export type ObsOutputState = EventTypes.ObsOutputState
+export type MonitorType = Enums.ObsMonitorType
+export type ObsMediaInputAction = Enums.ObsMediaInputAction
+export type ObsOutputState = Enums.ObsOutputState
 export type VendorEvent = EventTypes.VendorEvent
 export type CustomEvent = EventTypes.CustomEvent
 export type CurrentSceneCollectionChanging = EventTypes.CurrentSceneCollectionChanging

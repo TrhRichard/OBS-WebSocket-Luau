@@ -7,16 +7,14 @@ local obs = OBSWebSocket.new()
 obs.onReady:Connect(function()
 	print("Connected to OBS!")
 	local results = obs:batchRequest({
-		requests = {
-			{
-				requestType = "Sleep",
-				requestData = {
-					sleepMillis = 1000,
-				},
+		{
+			requestType = "Sleep",
+			requestData = {
+				sleepMillis = 1000,
 			},
-			{
-				requestType = "GetStats",
-			},
+		},
+		{
+			requestType = "GetStats",
 		},
 	})
 	print(results)
@@ -31,6 +29,7 @@ obs.onSocketClosed:Once(function(code, name)
 	end
 end)
 
+--[[
 obs:on("StudioModeStateChanged", function(d: OBSWebSocket.StudioModeStateChanged)
 	local vCamEnabled = obs:getVirtualCamStatus()
 	if d.studioModeEnabled == true then
@@ -43,5 +42,6 @@ obs:on("StudioModeStateChanged", function(d: OBSWebSocket.StudioModeStateChanged
 		end
 	end
 end)
+]]
 
 obs:connect(process.env["OBS_WEBSOCKET_PASSWORD"])

@@ -107,6 +107,4 @@ export type RequestType =
     "SetStudioModeEnabled" | "OpenInputPropertiesDialog" | "OpenInputFiltersDialog" | "OpenInputInteractDialog" |
     "GetMonitorList" | "OpenVideoMixProjector" | "OpenSourceProjector"
 
-export type OnEventHandle<S> = Events.OnEventHandle<S>
-
 return {}
