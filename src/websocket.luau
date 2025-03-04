@@ -478,21 +478,17 @@ end
 
 -- ### Sources Requests ###
 
-type GetSourceActiveResponse = {
-	videoActive: boolean,
-	videoShowing: boolean,
-}
-type GetSourceActiveOptions = {
+type GetSourceActiveRequest = {
 	sourceName: string?,
 	sourceUuid: string?,
 }
-function OBSWebSocket.getSourceActive(self: OBSWebSocket, options: GetSourceActiveOptions?): GetSourceActiveResponse
+function OBSWebSocket.getSourceActive(self: OBSWebSocket, options: GetSourceActiveRequest?): (boolean, boolean)
 	local response = self:request("GetSourceActive", options)
 
-	return response :: any
+	return response.videoActive, response.videoShowing
 end
 
-type GetSourceScreenshotOptions = {
+type GetSourceScreenshotRequest = {
 	sourceName: string?,
 	sourceUuid: string?,
 	imageFormat: string,
@@ -500,28 +496,774 @@ type GetSourceScreenshotOptions = {
 	imageHeight: number?,
 	imageCompressionQuality: number?,
 }
-function OBSWebSocket.getSourceScreenshot(self: OBSWebSocket, options: GetSourceActiveOptions): string
+function OBSWebSocket.getSourceScreenshot(self: OBSWebSocket, options: GetSourceActiveRequest): string
 	local response = self:request("GetSourceScreenshot", options)
 
 	return response.imageData :: any
 end
 
-type SaveSourceScreenshotOptions = GetSourceScreenshotOptions & {
+type SaveSourceScreenshotRequest = GetSourceScreenshotRequest & {
 	imageFilePath: string,
 }
-function OBSWebSocket.saveSourceScreenshot(self: OBSWebSocket, options: SaveSourceScreenshotOptions)
+function OBSWebSocket.saveSourceScreenshot(self: OBSWebSocket, options: SaveSourceScreenshotRequest)
 	self:request("SaveSourceScreenshot", options)
 end
 
 -- ### Scenes Requests ###
 
+type GetSceneListResponse = {
+	currentProgramSceneName: string,
+	currentProgramSceneUuid: string,
+	currentPreviewSceneName: string,
+	currentPreviewSceneUuid: string,
+	scenes: { Types.Object },
+}
+function OBSWebSocket.getSceneList(self: OBSWebSocket): GetSceneListResponse
+	local response = self:request("GetSceneList")
+
+	return response :: any
+end
+
+function OBSWebSocket.getGroupList(self: OBSWebSocket): { Types.Object }
+	local response = self:request("GetGroupList")
+
+	return response.groups :: any
+end
+
+type GetCurrentProgramSceneResponse = {
+	sceneName: string,
+	sceneUuid: string,
+}
+function OBSWebSocket.getCurrentProgramScene(self: OBSWebSocket): string
+	local response = self:request("GetCurrentProgramScene")
+
+	return response :: any
+end
+
+type SetCurrentProgramSceneRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+}
+function OBSWebSocket.setCurrentProgramScene(self: OBSWebSocket, options: SetCurrentProgramSceneRequest)
+	self:request("SetCurrentProgramScene", options)
+end
+
+type GetCurrentPreviewSceneResponse = {
+	sceneName: string,
+	sceneUuid: string,
+	currentPreviewSceneName: string,
+	currentPreviewSceneUuid: string,
+}
+function OBSWebSocket.getCurrentPreviewScene(self: OBSWebSocket): GetCurrentPreviewSceneResponse
+	local response = self:request("GetCurrentPreviewScene")
+
+	return response :: any
+end
+
+type SetCurrentPreviewSceneRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+}
+function OBSWebSocket.setCurrentPreviewScene(self: OBSWebSocket, options: SetCurrentPreviewSceneRequest)
+	self:request("SetCurrentPreviewScene", options)
+end
+
+function OBSWebSocket.createScene(self: OBSWebSocket, sceneName: string): string
+	local response = self:request("CreateScene", { sceneName = sceneName })
+
+	return response.sceneUuid :: any
+end
+
+type RemoveSceneRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+}
+function OBSWebSocket.removeScene(self: OBSWebSocket, options: RemoveSceneRequest)
+	self:request("RemoveScene", options)
+end
+
+type SetSceneNameRequest = {
+	newSceneName: string,
+	sceneName: string?,
+	sceneUuid: string?,
+}
+function OBSWebSocket.setSceneName(self: OBSWebSocket, options: SetSceneNameRequest)
+	self:request("SetSceneName", options)
+end
+
+type GetSceneSceneTransitionOverrideRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+}
+type GetSceneSceneTransitionOverrideResponse = {
+	transitionName: string,
+	transitionDuration: number,
+}
+function OBSWebSocket.getSceneSceneTransitionOverride(
+	self: OBSWebSocket,
+	options: GetSceneSceneTransitionOverrideRequest
+): GetSceneSceneTransitionOverrideResponse
+	local response = self:request("GetSceneSceneTransitionOverride", options)
+
+	return response :: any
+end
+
+type SetSceneSceneTransitionOverrideRequest = {
+	transitionName: string,
+	transitionDuration: number,
+	sceneName: string?,
+	sceneUuid: string?,
+}
+function OBSWebSocket.setSceneSceneTransitionOverride(
+	self: OBSWebSocket,
+	options: SetSceneSceneTransitionOverrideRequest
+)
+	self:request("SetSceneSceneTransitionOverride", options)
+end
+
 -- ### Inputs Requests ###
+
+function OBSWebSocket.getInputList(self: OBSWebSocket, inputKind: string?): { Types.Object }
+	local response = self:request("GetInputList", { inputKind = inputKind })
+
+	return response.inputs :: any
+end
+
+function OBSWebSocket.getInputKindList(self: OBSWebSocket, unversioned: boolean?): { string }
+	local response = self:request("GetInputKindList", { unversioned = unversioned })
+
+	return response.inputKinds :: any
+end
+
+type GetSpecialInputsResponse = {
+	desktop1: string,
+	desktop2: string,
+	mic1: string,
+	mic2: string,
+	mic3: string,
+	mic4: string,
+}
+function OBSWebSocket.getSpecialInputs(self: OBSWebSocket): GetSpecialInputsResponse
+	local response = self:request("GetSpecialInputs")
+
+	return response :: any
+end
+
+type CreateInputRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	inputName: string,
+	inputKind: string,
+	inputSettings: Types.Object?,
+	sceneItemEnabled: boolean?,
+}
+type CreateInputResponse = {
+	inputUuid: string,
+	sceneItemId: number,
+}
+function OBSWebSocket.createInput(self: OBSWebSocket, options: CreateInputRequest): CreateInputResponse
+	local response = self:request("CreateInput", options)
+
+	return response :: any
+end
+
+type RemoveInputRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.removeInput(self: OBSWebSocket, options: RemoveInputRequest)
+	self:request("RemoveInput", options)
+end
+
+type SetInputNameRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	newInputName: string,
+}
+function OBSWebSocket.setInputName(self: OBSWebSocket, options: SetInputNameRequest)
+	self:request("SetInputName", options)
+end
+
+function OBSWebSocket.getInputDefaultSettings(self: OBSWebSocket, inputKind: string): Types.Object
+	local response = self:request("GetInputDefaultSettings", { inputKind = inputKind })
+
+	return response.defaultInputSettings :: any
+end
+
+type GetInputSettingsRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+type GetInputSettingsResponse = {
+	inputSettings: Types.Object,
+	inputKind: string,
+}
+function OBSWebSocket.getInputSettings(self: OBSWebSocket, options: GetInputSettingsRequest): GetInputSettingsResponse
+	local response = self:request("GetInputSettings", options)
+
+	return response :: any
+end
+
+type SetInputSettingsRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	inputSettings: Types.Object,
+	overlay: boolean?,
+}
+function OBSWebSocket.setInputSettings(self: OBSWebSocket, options: SetInputSettingsRequest)
+	self:request("SetInputSettings", options)
+end
+
+type GetInputMuteRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.getInputMute(self: OBSWebSocket, options: GetInputMuteRequest): boolean
+	local response = self:request("GetInputMute", options)
+
+	return response.inputMuted :: any
+end
+
+type SetInputMuteRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	inputMuted: boolean,
+}
+function OBSWebSocket.setInputMute(self: OBSWebSocket, options: SetInputMuteRequest)
+	self:request("SetInputMute", options)
+end
+
+type ToggleInputMuteRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.toggleInputMute(self: OBSWebSocket, options: ToggleInputMuteRequest)
+	self:request("ToggleInputMute", options)
+end
+
+type GetInputVolumeRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.getInputVolume(self: OBSWebSocket, options: GetInputVolumeRequest): number
+	local response = self:request("GetInputVolume", options)
+
+	return response.inputVolume :: any
+end
+
+type SetInputVolumeRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	inputVolumeMul: number?,
+	inputVolumeDb: number?,
+}
+function OBSWebSocket.setInputVolume(self: OBSWebSocket, options: SetInputVolumeRequest)
+	self:request("SetInputVolume", options)
+end
+
+type GetInputAudioBalanceRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.getInputAudioBalance(self: OBSWebSocket, options: GetInputAudioBalanceRequest): number
+	local response = self:request("GetInputAudioBalance", options)
+
+	return response.inputAudioBalance :: any
+end
+
+type SetInputAudioBalanceRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	inputAudioBalance: number,
+}
+function OBSWebSocket.setInputAudioBalance(self: OBSWebSocket, options: SetInputAudioBalanceRequest)
+	self:request("SetInputAudioBalance", options)
+end
+
+type GetInputAudioSyncOffsetRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.getInputAudioSyncOffset(self: OBSWebSocket, options: GetInputAudioSyncOffsetRequest): number
+	local response = self:request("GetInputAudioSyncOffset", options)
+
+	return response.inputAudioSyncOffset :: any
+end
+
+type SetInputAudioSyncOffsetRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	inputAudioSyncOffset: number,
+}
+function OBSWebSocket.setInputAudioSyncOffset(self: OBSWebSocket, options: SetInputAudioSyncOffsetRequest)
+	self:request("SetInputAudioSyncOffset", options)
+end
+
+type GetInputAudioMonitorTypeRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.getInputAudioMonitorType(
+	self: OBSWebSocket,
+	options: GetInputAudioMonitorTypeRequest
+): Enums.ObsMonitorType
+	local response = self:request("GetInputAudioMonitorType", options)
+
+	return response.monitorType :: any
+end
+
+type SetInputAudioMonitorTypeRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	monitorType: Enums.ObsMonitorType,
+}
+function OBSWebSocket.setInputAudioMonitorType(self: OBSWebSocket, options: SetInputAudioMonitorTypeRequest)
+	self:request("SetInputAudioMonitorType", options)
+end
+
+type GetInputAudioTracksRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.getInputAudioTracks(self: OBSWebSocket, options: GetInputAudioTracksRequest): { Types.Object }
+	local response = self:request("GetInputAudioTracks", options)
+
+	return response.inputAudioTracks :: any
+end
+
+type SetInputAudioTracksRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	inputAudioTracks: { Types.Object },
+}
+function OBSWebSocket.setInputAudioTracks(self: OBSWebSocket, options: SetInputAudioTracksRequest)
+	self:request("SetInputAudioTracks", options)
+end
+
+type GetInputDeinterlaceModeRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.getInputDeinterlaceMode(
+	self: OBSWebSocket,
+	options: GetInputDeinterlaceModeRequest
+): Enums.ObsDeinterlaceMode
+	local response = self:request("GetInputDeinterlaceMode", options)
+
+	return response.inputDeinterlaceMode :: any
+end
+
+type SetInputDeinterlaceModeRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	inputDeinterlaceMode: Enums.ObsDeinterlaceMode,
+}
+function OBSWebSocket.setInputDeinterlaceMode(self: OBSWebSocket, options: SetInputDeinterlaceModeRequest)
+	self:request("SetInputDeinterlaceMode", options)
+end
+
+type GetInputDeinterlaceFieldOrderRequest = {
+	inputName: string?,
+	inputUuid: string?,
+}
+function OBSWebSocket.getInputDeinterlaceFieldOrder(
+	self: OBSWebSocket,
+	options: GetInputDeinterlaceFieldOrderRequest
+): Enums.ObsDeinterlaceFieldOrder
+	local response = self:request("GetInputDeinterlaceFieldOrder", options)
+
+	return response.inputDeinterlaceFieldOrder :: any
+end
+
+type SetInputDeinterlaceFieldOrderRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	inputDeinterlaceFieldOrder: Enums.ObsDeinterlaceFieldOrder,
+}
+function OBSWebSocket.setInputDeinterlaceFieldOrder(self: OBSWebSocket, options: SetInputDeinterlaceFieldOrderRequest)
+	self:request("SetInputDeinterlaceFieldOrder", options)
+end
+
+type GetInputPropertiesListPropertyItemsRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	propertyName: string,
+}
+function OBSWebSocket.getInputPropertiesListPropertyItems(
+	self: OBSWebSocket,
+	options: GetInputPropertiesListPropertyItemsRequest
+): { Types.Object }
+	local response = self:request("GetInputPropertiesListPropertyItems", options)
+
+	return response.propertyItems :: any
+end
+
+type PressInputPropertiesButtonRequest = {
+	inputName: string?,
+	inputUuid: string?,
+	propertyName: Types.ButtonPropertyName,
+}
+function OBSWebSocket.pressInputPropertiesButton(self: OBSWebSocket, options: PressInputPropertiesButtonRequest)
+	self:request("PressInputPropertiesButton", options)
+end
 
 -- ### Transitions Requests ###
 
+function OBSWebSocket.getTransitionKindList(self: OBSWebSocket): { string }
+	local response = self:request("GetTransitionKindList")
+
+	return response.transitionKinds :: any
+end
+
+type GetSceneTransitionListResponse = {
+	currentTransitionName: string,
+	currentTransitionUuid: string,
+	currentTransitionDuration: number,
+	transitions: { Types.Object },
+}
+function OBSWebSocket.getSceneTransitionList(self: OBSWebSocket): GetSceneTransitionListResponse
+	local response = self:request("GetSceneTransitionList")
+
+	return response :: any
+end
+
+type GetCurrentSceneTransitionResponse = {
+	transitionName: string,
+	transitionUuid: string,
+	transitionKind: string,
+	transitionFixed: boolean,
+	transitionDuration: number?,
+	transitionConfigurable: boolean,
+	transitionSettings: Types.Object?,
+}
+function OBSWebSocket.getCurrentSceneTransition(self: OBSWebSocket): GetCurrentSceneTransitionResponse
+	local response = self:request("GetCurrentSceneTransition")
+
+	return response :: any
+end
+
+function OBSWebSocket.setCurrentSceneTransition(self: OBSWebSocket, transitionName: string)
+	self:request("SetCurrentSceneTransition", { transitionName = transitionName })
+end
+
+function OBSWebSocket.setCurrentSceneTransitionDuration(self: OBSWebSocket, transitionDuration: number)
+	self:request("SetCurrentSceneTransitionDuration", { transitionDuration = transitionDuration })
+end
+
+function OBSWebSocket.setCurrentSceneTransitionSettings(
+	self: OBSWebSocket,
+	transitionSettings: Types.Object,
+	overlay: boolean?
+)
+	self:request("SetCurrentSceneTransitionSettings", { transitionSettings = transitionSettings, overlay = overlay })
+end
+
+function OBSWebSocket.getCurrentSceneTransitionCursor(self: OBSWebSocket): number
+	local response = self:request("GetCurrentSceneTransitionCursor")
+
+	return response.transitionCursor :: any
+end
+
+function OBSWebSocket.triggerStudioModeTransition(self: OBSWebSocket)
+	self:request("TriggerStudioModeTransition")
+end
+
+--- @deprecated
+function OBSWebSocket.setTBarPosition(self: OBSWebSocket, position: number, release: boolean?)
+	self:request("SetTBarPosition", { position = position, release = release })
+end
+
 -- ### Filters Requests ###
 
+function OBSWebSocket.getSourceFilterKindList(self: OBSWebSocket): { string }
+	local response = self:request("GetSourceFilterKindList")
+
+	return response.sourceFilterKinds :: any
+end
+
+type GetSourceFilterListRequest = {
+	sourceName: string?,
+	sourceUuid: string?,
+}
+function OBSWebSocket.getSourceFilterList(self: OBSWebSocket, options: GetSourceFilterListRequest): { Types.Object }
+	local response = self:request("GetSourceFilterList", options)
+
+	return response.filters :: any
+end
+
+function OBSWebSocket.getSourceFilterDefaultSettings(self: OBSWebSocket, filterKind: string): Types.Object
+	local response = self:request("GetSourceFilterDefaultSettings", { filterKind = filterKind })
+
+	return response.defaultFilterSettings :: any
+end
+
+type CreateSourceFilterRequest = {
+	sourceName: string?,
+	sourceUuid: string?,
+	filterName: string,
+	filterType: string,
+	filterSettings: Types.Object?,
+}
+function OBSWebSocket.createSourceFilter(self: OBSWebSocket, options: CreateSourceFilterRequest): string
+	local response = self:request("CreateSourceFilter", options)
+
+	return response.filterName :: any
+end
+
+type RemoveSourceFilterRequest = {
+	sourceName: string?,
+	sourceUuid: string?,
+	filterName: string,
+}
+function OBSWebSocket.removeSourceFilter(self: OBSWebSocket, options: RemoveSourceFilterRequest)
+	self:request("RemoveSourceFilter", options)
+end
+
+type SetSourceFilterNameRequest = {
+	sourceName: string?,
+	sourceUuid: string?,
+	filterName: string,
+	newFilterName: string,
+}
+function OBSWebSocket.setSourceFilterName(self: OBSWebSocket, options: SetSourceFilterNameRequest)
+	self:request("SetSourceFilterName", options)
+end
+
+type GetSourceFilterRequest = {
+	sourceName: string?,
+	sourceUuid: string?,
+	filterName: string,
+}
+type GetSourceFilterResponse = {
+	filterEnabled: boolean,
+	filterIndex: number,
+	filterKind: string,
+	filterSettings: Types.Object,
+}
+function OBSWebSocket.getSourceFilter(self: OBSWebSocket, options: GetSourceFilterRequest): GetSourceFilterResponse
+	local response = self:request("GetSourceFilter", options)
+
+	return response :: any
+end
+
+type SetSourceFilterIndexRequest = {
+	sourceName: string?,
+	sourceUuid: string?,
+	filterName: string,
+	filterIndex: number,
+}
+function OBSWebSocket.setSourceFilterIndex(self: OBSWebSocket, options: SetSourceFilterIndexRequest)
+	self:request("SetSourceFilterIndex", options)
+end
+
+type SetSourceFilterSettingsRequest = {
+	sourceName: string?,
+	sourceUuid: string?,
+	filterName: string,
+	filterSettings: Types.Object,
+	overlay: boolean?,
+}
+function OBSWebSocket.setSourceFilterSettings(self: OBSWebSocket, options: SetSourceFilterSettingsRequest)
+	self:request("SetSourceFilterSettings", options)
+end
+
+type SetSourceFilterEnabledRequest = {
+	sourceName: string?,
+	sourceUuid: string?,
+	filterName: string,
+	filterEnabled: boolean,
+}
+function OBSWebSocket.setSourceFilterEnabled(self: OBSWebSocket, options: SetSourceFilterEnabledRequest)
+	self:request("SetSourceFilterEnabled", options)
+end
+
 -- ### Scene Items Requests ###
+
+type GetSceneItemListRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+}
+function OBSWebSocket.getSceneItemList(self: OBSWebSocket, options: GetSceneItemListRequest): { Types.Object }
+	local response = self:request("GetSceneItemList", options)
+
+	return response.sceneItems :: any
+end
+
+type GetGroupSceneItemListRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+}
+function OBSWebSocket.getGroupSceneItemList(self: OBSWebSocket, options: GetGroupSceneItemListRequest): { Types.Object }
+	local response = self:request("GetGroupSceneItemList", options)
+
+	return response.sceneItems :: any
+end
+
+type GetSceneItemIdRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sourceName: string,
+	searchOffset: number?,
+}
+function OBSWebSocket.getSceneItemId(self: OBSWebSocket, options: GetSceneItemIdRequest): number
+	local response = self:request("GetSceneItemId", options)
+
+	return response.sceneItemId :: any
+end
+
+type GetSceneItemSourceRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+}
+function OBSWebSocket.getSceneItemSource(self: OBSWebSocket, options: GetSceneItemSourceRequest): (string, string)
+	local response = self:request("GetSceneItemSource", options)
+
+	return response.sourceName, response.sourceUuid
+end
+
+type CreateSceneItemRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sourceName: string?,
+	sourceUuid: string?,
+	sceneItemEnabled: boolean,
+}
+function OBSWebSocket.createSceneItem(self: OBSWebSocket, options: CreateSceneItemRequest): number
+	local response = self:request("CreateSceneItem", options)
+
+	return response.sceneItemId :: any
+end
+
+type RemoveSceneItemRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+}
+function OBSWebSocket.removeSceneItem(self: OBSWebSocket, options: RemoveSceneItemRequest)
+	self:request("RemoveSceneItem", options)
+end
+
+type DuplicateSceneItemRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+	destinationSceneName: string?,
+	destinationSceneUuid: string?,
+}
+function OBSWebSocket.duplicateSceneItem(self: OBSWebSocket, options: DuplicateSceneItemRequest): number
+	local response = self:request("DuplicateSceneItem", options)
+
+	return response.sceneItemId :: any
+end
+
+type GetSceneItemTransformRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+}
+function OBSWebSocket.getSceneItemTransform(self: OBSWebSocket, options: GetSceneItemTransformRequest): Types.Object
+	local response = self:request("GetSceneItemTransform", options)
+
+	return response.sceneItemTransform :: any
+end
+
+type SetSceneItemTransformRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+	sceneItemTransform: Types.Object,
+}
+function OBSWebSocket.setSceneItemTransform(self: OBSWebSocket, options: SetSceneItemTransformRequest)
+	self:request("SetSceneItemTransform", options)
+end
+
+type GetSceneItemEnabledRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+}
+function OBSWebSocket.getSceneItemEnabled(self: OBSWebSocket, options: GetSceneItemEnabledRequest): boolean
+	local response = self:request("GetSceneItemEnabled", options)
+
+	return response.sceneItemEnabled :: any
+end
+
+type SetSceneItemEnabledRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+	sceneItemEnabled: boolean,
+}
+function OBSWebSocket.setSceneItemEnabled(self: OBSWebSocket, options: SetSceneItemEnabledRequest)
+	self:request("SetSceneItemEnabled", options)
+end
+
+type GetSceneItemLockedRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+}
+function OBSWebSocket.getSceneItemLocked(self: OBSWebSocket, options: GetSceneItemLockedRequest): boolean
+	local response = self:request("GetSceneItemLocked", options)
+
+	return response.sceneItemLocked :: any
+end
+
+type SetSceneItemLockedRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+	sceneItemLocked: boolean,
+}
+function OBSWebSocket.setSceneItemLocked(self: OBSWebSocket, options: SetSceneItemLockedRequest)
+	self:request("SetSceneItemLocked", options)
+end
+
+type GetSceneItemIndexRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+}
+function OBSWebSocket.getSceneItemIndex(self: OBSWebSocket, options: GetSceneItemIndexRequest): number
+	local response = self:request("GetSceneItemIndex", options)
+
+	return response.sceneItemIndex :: any
+end
+
+type SetSceneItemIndexRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+	sceneItemIndex: number,
+}
+function OBSWebSocket.setSceneItemIndex(self: OBSWebSocket, options: SetSceneItemIndexRequest)
+	self:request("SetSceneItemIndex", options)
+end
+
+type GetSceneItemBlendModeRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+}
+function OBSWebSocket.getSceneItemBlendMode(
+	self: OBSWebSocket,
+	options: GetSceneItemBlendModeRequest
+): Enums.ObsBlendMode
+	local response = self:request("GetSceneItemBlendMode", options)
+
+	return response.sceneItemBlendMode :: any
+end
+
+type SetSceneItemBlendModeRequest = {
+	sceneName: string?,
+	sceneUuid: string?,
+	sceneItemId: number,
+	sceneItemBlendMode: Enums.ObsBlendMode,
+}
+function OBSWebSocket.setSceneItemBlendMode(self: OBSWebSocket, options: SetSceneItemBlendModeRequest)
+	self:request("SetSceneItemBlendMode", options)
+end
 
 -- ### Outputs Requests ###
 
@@ -708,7 +1450,7 @@ end
 
 -- ### Media Inputs Requests ###
 
-type GetMediaInputStatusOptions = {
+type GetMediaInputStatusRequest = {
 	inputName: string?,
 	inputUuid: string?,
 }
@@ -719,31 +1461,31 @@ type GetMediaInputStatusResponse = {
 }
 function OBSWebSocket.getMediaInputStatus(
 	self: OBSWebSocket,
-	options: GetMediaInputStatusOptions
+	options: GetMediaInputStatusRequest
 ): GetMediaInputStatusResponse
 	local response = self:request("GetMediaInputStatus")
 
 	return response :: any
 end
 
-type SetMediaInputCursorOptions = GetMediaInputStatusOptions & {
+type SetMediaInputCursorRequest = GetMediaInputStatusRequest & {
 	mediaCursor: number,
 }
-function OBSWebSocket.setMediaInputCursor(self: OBSWebSocket, options: SetMediaInputCursorOptions)
+function OBSWebSocket.setMediaInputCursor(self: OBSWebSocket, options: SetMediaInputCursorRequest)
 	self:request("SetMediaInputCursor", options)
 end
 
-type OffsetMediaInputCursorOptions = GetMediaInputStatusOptions & {
+type OffsetMediaInputCursorRequest = GetMediaInputStatusRequest & {
 	mediaCursorOffset: number,
 }
-function OBSWebSocket.offsetMediaInputCursor(self: OBSWebSocket, options: OffsetMediaInputCursorOptions)
+function OBSWebSocket.offsetMediaInputCursor(self: OBSWebSocket, options: OffsetMediaInputCursorRequest)
 	self:request("OffsetMediaInputCursor", options)
 end
 
-type TriggerMediaInputActionOptions = GetMediaInputStatusOptions & {
+type TriggerMediaInputActionRequest = GetMediaInputStatusRequest & {
 	mediaAction: string,
 }
-function OBSWebSocket.triggerMediaInputAction(self: OBSWebSocket, options: TriggerMediaInputActionOptions)
+function OBSWebSocket.triggerMediaInputAction(self: OBSWebSocket, options: TriggerMediaInputActionRequest)
 	self:request("TriggerMediaInputAction", options)
 end
 
@@ -759,19 +1501,19 @@ function OBSWebSocket.setStudioModeEnabled(self: OBSWebSocket, newState: boolean
 	self:request("TriggerMediaInputAction", { studioModeEnabled = newState })
 end
 
-type OpenInputPropertiesDialogOptions = {
+type OpenInputPropertiesDialogRequest = {
 	inputName: string?,
 	inputUuid: string?,
 }
-function OBSWebSocket.openInputPropertiesDialog(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
+function OBSWebSocket.openInputPropertiesDialog(self: OBSWebSocket, options: OpenInputPropertiesDialogRequest)
 	self:request("OpenInputPropertiesDialog", options)
 end
 
-function OBSWebSocket.openInputFiltersDialog(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
+function OBSWebSocket.openInputFiltersDialog(self: OBSWebSocket, options: OpenInputPropertiesDialogRequest)
 	self:request("OpenInputFiltersDialog", options)
 end
 
-function OBSWebSocket.openInputInteractDialog(self: OBSWebSocket, options: OpenInputPropertiesDialogOptions)
+function OBSWebSocket.openInputInteractDialog(self: OBSWebSocket, options: OpenInputPropertiesDialogRequest)
 	self:request("OpenInputInteractDialog", options)
 end
 
@@ -794,13 +1536,13 @@ function OBSWebSocket.openVideoMixProjector(
 	})
 end
 
-type OpenSourceProjectorOptions = {
+type OpenSourceProjectorRequest = {
 	sourceName: string,
 	sourceUuid: string,
 	monitorIndex: number,
 	projectorGeometry: string,
 }
-function OBSWebSocket.openSourceProjector(self: OBSWebSocket, options: OpenSourceProjectorOptions)
+function OBSWebSocket.openSourceProjector(self: OBSWebSocket, options: OpenSourceProjectorRequest)
 	self:request("OpenSourceProjector", options)
 end
 

@@ -20,15 +20,15 @@ for fun
 ### Requests
 
 -   [x] Batch Requests
--   [ ] Requests
+-   [x] Requests
     -   [x] General
     -   [x] Config
     -   [x] Sources
-    -   [ ] Scenes
-    -   [ ] Inputs
-    -   [ ] Transitions
-    -   [ ] Filters
-    -   [ ] Scene Items
+    -   [x] Scenes
+    -   [x] Inputs
+    -   [x] Transitions
+    -   [x] Filters
+    -   [x] Scene Items
     -   [x] Outputs
     -   [x] Stream
     -   [x] Record
@@ -46,27 +46,7 @@ for fun
     -   Probably gonna do it sometime after the first release, for now
         [OBS WebSocket Protocal](https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md) can be used for more info regarding requests and stuff
 
-## Request Implementation Format
-
-Implementation format for me to follow so I keep stuff more consistent
-
--   For requests that have multiple keys,
-    return the object
-    (for example: `OBSWebSocket:getStats()` returns the response object)
-
--   For requests that have one key,
-    return the value of the key
-    (for example: `OBSWebSocket:getPersistentData()` returns `any?`)
-
--   For requests that have two keys and have same type,
-    return a tuple of both
-    (for example: `OBSWebSocket:getProfileParameter()` returns `(string, string)`)
-
 ## Credits
 
 -   [Data-Oriented-House](https://github.com/Data-Oriented-House) for
     [LemonSignal](https://github.com/Data-Oriented-House/LemonSignal)
-
--   ChatGPT
-    -   writing all the exported types in `src/init.luau` since
-        I did not want to deal with that pain
