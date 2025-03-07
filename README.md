@@ -15,7 +15,6 @@ for fun
 -   [ ] Implement typing for method `OBSWebSocket:on()` handler argument
     -   Due to current type solver (or my stupidity) there's no way to give proper
         autocomplete at the moment, for that reason all the events types are exported from the main class for you
--   [ ] Implement documentation for event data fields
 
 ### Requests
 
@@ -42,9 +41,6 @@ for fun
         something that should be considered, went with Zune at first because
         I liked interacting with websockets more here
 -   [ ] Add support for [pesde](https://pesde.dev/) package manager
--   [ ] Add Moonwave support for documentation
-    -   Probably gonna do it sometime after the first release, for now
-        [OBS WebSocket Protocal](https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md) can be used for more info regarding requests and stuff
 
 ## Credits
 

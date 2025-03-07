@@ -135,7 +135,7 @@ function OBSWebSocket.connect(self: OBSWebSocket, password: string?, url: string
 	})
 end
 
-function OBSWebSocket.on(self: OBSWebSocket, eventType: Types.RequestType, handler: (eventData: Types.Object) -> ())
+function OBSWebSocket.on(self: OBSWebSocket, eventType: Types.EventType, handler: (eventData: Types.Object) -> ())
 	if not self._handlers[eventType] then
 		self._handlers[eventType] = {}
 	end
@@ -190,14 +190,14 @@ function OBSWebSocket.request(
 	return finalJson.d.responseData :: any
 end
 
-type Request = {
+export type RawRequest = {
 	requestType: Types.RequestType,
 	requestId: string?,
 	requestData: Types.Object?,
 }
 function OBSWebSocket.batchRequest(
 	self: OBSWebSocket,
-	requests: { Request },
+	requests: { RawRequest },
 	haltOnFailure: boolean?,
 	executionType: number?
 ): { Types.Object }

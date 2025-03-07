@@ -107,6 +107,8 @@ export type RequestType =
     "SetStudioModeEnabled" | "OpenInputPropertiesDialog" | "OpenInputFiltersDialog" | "OpenInputInteractDialog" |
     "GetMonitorList" | "OpenVideoMixProjector" | "OpenSourceProjector"
 
+export type EventType = Events.EventType
+
 export type ButtonPropertyName = string | "refreshnocache"
 
 return {}

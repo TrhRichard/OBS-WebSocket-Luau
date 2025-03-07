@@ -18,7 +18,7 @@ obs.onReady:Connect(function()
 		},
 	})
 	print(results)
-	--print(obs:request("GetInputSettings", { inputName = "thing" }))
+	print(obs:getInputSettings({ inputName = "thing" }))
 end)
 
 obs.onSocketClosed:Once(function(code, name)
@@ -29,7 +29,6 @@ obs.onSocketClosed:Once(function(code, name)
 	end
 end)
 
---[[
 obs:on("StudioModeStateChanged", function(d: OBSWebSocket.StudioModeStateChanged)
 	local vCamEnabled = obs:getVirtualCamStatus()
 	if d.studioModeEnabled == true then
@@ -42,6 +41,5 @@ obs:on("StudioModeStateChanged", function(d: OBSWebSocket.StudioModeStateChanged
 		end
 	end
 end)
-]]
 
 obs:connect(process.env["OBS_WEBSOCKET_PASSWORD"])
